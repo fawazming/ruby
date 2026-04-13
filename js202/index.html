@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS 202</title>
+</head>
+<body>
+    <center><h1>Student Portal</h1></center>
+   
+    <div>
+        <h3>Add New Student</h3>
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name"><br><br>
+
+        <label for="age">Age:</label>
+        <input type="number" id="age" name="age"><br><br>
+
+        <label for="grade">Grade:</label>
+        <input type="text" id="grade" name="grade"><br><br>
+
+        <button onclick="saveStudent()">Submit</button>
+    </div>
+
+    <div>
+        <h3>Student List (<span id="studentCount">0</span>)</h3>
+        <ul id="studentList">
+            <!-- Student entries will be added here -->
+        </ul>
+    </div>
+
+
+
+    <script>
+
+    let counter = 0;
+    function clickme() {
+        console.log("Button Clicked");
+        alert("Welcome to JS 202");
+    }
+
+    function saveStudent() {
+        const name = document.querySelector("#name").value;
+        const list = document.querySelector("#studentList");
+
+        // list.innerHTML = list.innerHTML + "<li>" + name + "</li>";
+        // list.innerHTML += "<li>" + name + "</li>";
+        list.innerHTML += `<li>${name}</li>`; // Template literals
+        counter++;
+        document.querySelector("#studentCount").innerText = counter; // Update the student count
+        document.querySelector("#name").value = ""; // Clear the input field after adding the student
+
+    }
+    </script>
+</body>
+</html>
