@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guess The Number - Live</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 font-sans">
+
+<div class="min-h-screen flex flex-col items-center justify-center p-4">
+
+  <!-- Header -->
+  <div class="text-center mb-6">
+    <h1 class="text-4xl font-extrabold text-yellow-500 drop-shadow">
+      GUESS
+    </h1>
+    <h2 class="text-2xl font-bold text-blue-600">
+      THE NUMBER
+    </h2>
+    <span class="inline-block mt-2 px-3 py-1 bg-red-500 text-white text-sm rounded-full animate-pulse">
+      🔴 LIVE GAME
+    </span>
+  </div>
+
+  <!-- Game Card -->
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+
+    <!-- Range -->
+    <div class="flex justify-between items-center mb-4">
+      <div class="bg-green-100 text-green-700 px-4 py-2 rounded-lg font-bold">
+        25 ↑
+      </div>
+      <div class="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold">
+        ↓ 100
+      </div>
+    </div>
+
+    <!-- Hint -->
+    <div class="bg-yellow-100 text-yellow-800 text-center py-2 rounded-lg mb-4 font-semibold">
+      More than 30 • Less than 75
+    </div>
+
+    <!-- Mystery Box -->
+    <div class="flex justify-center mb-4">
+      <div class="w-24 h-24 bg-gray-300 rounded-xl flex items-center justify-center shadow-inner">
+        <img src="img.png" class="w-24 h-24" alt="">
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="flex gap-2 mb-4">
+      <input 
+        type="number" 
+        placeholder="Enter your guess..." 
+        class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+      >
+      <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+        Guess
+      </button>
+    </div>
+
+    <!-- Feedback -->
+    <div class="text-center text-sm text-gray-600 mb-4">
+      ❌ Too low! Try again
+    </div>
+
+    <!-- Stats -->
+    <div class="flex justify-between text-sm text-gray-500">
+      <span>Players: <strong>80</strong></span>
+      <span>Top Score: <strong>8510</strong></span>
+    </div>
+
+  </div>
+
+  <!-- Live Players -->
+  <div class="bg-white mt-6 rounded-2xl shadow-lg p-4 w-full max-w-md">
+
+    <h3 class="font-bold text-gray-700 mb-3">Live Guesses</h3>
+
+    <div class="space-y-3">
+
+      <!-- Player -->
+      <div class="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 bg-blue-400 rounded-full"></div>
+          <span>Ethan</span>
+        </div>
+        <span class="text-green-600 font-bold">33 ✔</span>
+      </div>
+
+      <div class="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 bg-pink-400 rounded-full"></div>
+          <span>Sarah</span>
+        </div>
+        <span class="text-red-500 font-bold">72 ✖</span>
+      </div>
+
+      <div class="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 bg-yellow-400 rounded-full"></div>
+          <span>Mia</span>
+        </div>
+        <span class="text-green-600 font-bold">50 ✔</span>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+</body>
+
+<script>
+(() => {
+
+  // -----------------------------
+  // GAME STATE
+  // -----------------------------
+  let min = 1;
+  let max = 100;
+  let secretNumber;
+  let attempts = 0;
+  let lowerBound;
+  let upperBound;
+
+  // -----------------------------
+  // DOM ELEMENTS
+  // -----------------------------
+  const input = document.querySelector("input");
+  const button = document.querySelector("button");
+  const feedback = document.querySelector(".text-center.text-sm");
+  const hintBox = document.querySelector(".bg-yellow-100");
+  const rangeBoxes = document.querySelectorAll(".flex.justify-between div");
+
+  // -----------------------------
+  // INITIALIZE GAME
+  // -----------------------------
+  function initGame() {
+    secretNumber = Math.floor(Math.random() * (max - min + 1)) + min;
+    attempts = 0;
+
+    lowerBound = min;
+    upperBound = max;
+
+    updateHint();
+    updateRange();
+    setFeedback("🎯 Start guessing!", "neutral");
+
+    console.log("SECRET:", secretNumber); // remove in production
+  }
+
+  // -----------------------------
+  // UPDATE HINT TEXT
+  // -----------------------------
+  function updateHint() {
+    hintBox.textContent = `More than ${lowerBound} • Less than ${upperBound}`;
+  }
+
+  // -----------------------------
+  // UPDATE RANGE UI
+  // -----------------------------
+  function updateRange() {
+    rangeBoxes[0].textContent = `${lowerBound} ↑`;
+    rangeBoxes[1].textContent = `↓ ${upperBound}`;
+  }
+
+  // -----------------------------
+  // SET FEEDBACK
+  // -----------------------------
+  function setFeedback(message, type) {
+    feedback.textContent = message;
+
+    feedback.classList.remove("text-red-500", "text-green-600", "text-gray-600");
+
+    if (type === "success") {
+      feedback.classList.add("text-green-600");
+    } else if (type === "error") {
+      feedback.classList.add("text-red-500");
+    } else {
+      feedback.classList.add("text-gray-600");
+    }
+  }
+
+  // -----------------------------
+  // HANDLE GUESS
+  // -----------------------------
+  function handleGuess() {
+    const guess = Number(input.value);
+
+    // Validation
+    if (!guess || guess < min || guess > max) {
+      setFeedback("⚠️ Enter a valid number!", "error");
+      return;
+    }
+
+    attempts++;
+
+    // Correct guess
+    if (guess === secretNumber) {
+      setFeedback(`🎉 Correct! You got it in ${attempts} attempts`, "success");
+      endGame();
+      return;
+    }
+
+    // Too low
+    if (guess < secretNumber) {
+      lowerBound = Math.max(lowerBound, guess);
+      setFeedback("📉 Too low!", "error");
+    }
+
+    // Too high
+    if (guess > secretNumber) {
+      upperBound = Math.min(upperBound, guess);
+      setFeedback("📈 Too high!", "error");
+    }
+
+    updateHint();
+    updateRange();
+
+    input.value = "";
+  }
+
+  // -----------------------------
+  // END GAME + RESET
+  // -----------------------------
+  function endGame() {
+    button.textContent = "Play Again";
+
+    button.onclick = () => {
+      button.textContent = "Guess";
+      button.onclick = handleGuess;
+      input.disabled = false;
+      initGame();
+    };
+
+    input.disabled = true;
+  }
+
+  // -----------------------------
+  // EVENTS
+  // -----------------------------
+  button.addEventListener("click", handleGuess);
+
+  input.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") handleGuess();
+  });
+
+  // -----------------------------
+  // START GAME
+  // -----------------------------
+  initGame();
+
+})();
+</script>
+</html>

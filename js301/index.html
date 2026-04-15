@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS 301</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <main id="app" class="p-10 bg-gray-100 min-h-screen flex flex-col items-center justify-center">
+        <center><h1 class="text-4xl font-bold text-orange-500">Guess the Number Game</h1></center>
+        <img src="img.png" alt="Guess the Number Game" class="w-64 h-64 mt-6">
+        <div class="mt-10">
+            <p class="text-lg text-gray-700">I am thinking of a number <br> between <span id="min-number">10</span> and <span id="max-number">30</span>. <br> The number is less than <span id="max-guess">28</span> but <br>more than <span id="min-guess">20</span>. Guess the number.</p>
+            <label for="guess" class="block text-lg font-medium text-gray-700">Enter your guess:</label>
+            <input type="number" id="guess" name="guess" class="mt-2 p-2 border border-gray-300 rounded-md w-full">
+            <button onclick="checkGuess()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md">Submit Guess</button>
+
+            <p id="hint" class="mt-4 text-lg font-medium text-red-500"></p>
+            <p id="result" class="mt-4 text-lg font-medium text-green-500 "></p>
+        </div>
+    </main>
+
+
+    <script>
+    const minNumber = 10;
+    const maxNumber = 30;
+    const maxGuess = 81;
+    const minGuess = 20;
+    let ComputerGuess;
+
+
+        document.querySelector("#min-number").innerText = minNumber;
+        document.querySelector("#max-number").innerText = maxNumber;
+        document.querySelector("#max-guess").innerText = maxGuess;
+        document.querySelector("#min-guess").innerText = minGuess;
+
+    function checkGuess() {
+        ComputerGuess = Math.floor(Math.random() * (maxGuess - minGuess + 1)) + minGuess; // Generate a random number between min and max
+        document.querySelector("#nim").innerText = `(Computer's Guess: ${ComputerGuess})`; // Display the computer's guess for testing purposes
+        const userGuess = parseInt(document.querySelector("#guess").value); // Get the user's guess from the input field
+
+        if (userGuess < ComputerGuess) {
+            document.querySelector("#hint").innerText = "Too low! Try again.";
+            document.querySelector("#result").innerText = "";
+        } else if (userGuess > ComputerGuess) {
+            document.querySelector("#hint").innerText = "Too high! Try again.";
+            document.querySelector("#result").innerText = "";
+        } else {
+            document.querySelector("#hint").innerText = "";
+            document.querySelector("#result").innerText = "Congratulations! You guessed the number!";
+        }
+
+
+    }   
+    </script>
+</body>
+</html>
