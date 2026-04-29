@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>html108</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+</head>
+<body>
+    <div class="form container">
+<h2>Training Center Admission form</h2>
+<p class="subtitle">Apply for any of our professional training progress</p>
+
+<form id="AdmissionForm">
+
+<fieldset>
+    <label>Full Name</label>
+    <input type="text" id="fullname" required>
+</fieldset>
+
+<fieldset>
+    <label>Date of birth</label>
+    <input type="date" id="dob" required>
+</fieldset>
+
+<fieldset>
+    <label>Gender</label>
+    <select id="">
+        <option value="">Select Gender</option>
+        <option>Male</option>
+        <option>Female</option>
+        <option>Other</option>
+    </select>
+</fieldset>
+
+<fieldset>
+    <label>Email</label>
+    <input type="email" id="email" required>
+</fieldset>
+
+<fieldset>
+    <label>Phone Number</label>
+    <input type="tel" id="phone" required>
+</fieldset>
+
+<fieldset>
+    <label>Home Address</label>
+    <textarea id="address" rows="3"></textarea>
+</fieldset>
+
+<fieldset>
+    <label>Course Applying For</label>
+    <select id="course" required>
+        <option value="">Select Course</option>
+        <option>Web development</option>
+        <option>Graphic Design</option>
+        <option>Data Analysis</option>
+        <option>Digital Marketing</option>
+        <option>Cybersecurity</option>
+    </select>
+</fieldset>
+
+<fieldset>
+    <label>Highest Qualification</label>
+    <input type="text" id="qualification">
+</fieldset>
+
+<button type="submit">Submit Application</button>
+
+    </form>
+    </div>
+
+    <script>
+        document.getElementById("admissionForm").addEventListener("submit", function(e) {e.preventDefault();
+            alert("Application submitted successfully!")
+        })
+    </script>
+
+</body>
+</html>
