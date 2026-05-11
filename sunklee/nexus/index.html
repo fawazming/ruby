@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>NEXUS Project</h1>
+    <p class="content">
+        Welcome to the NEXUS Project! This initiative is designed to bridge the gap between disparate data systems, creating a unified ecosystem for seamless information exchange.
+    </p>
+    <section>
+        <h2>Our Mission</h2>
+        <p class="content">The NEXUS Project aims to provide a robust framework for developers to build scalable, interconnected applications. By leveraging cutting-edge integration protocols, we ensure that your data remains synchronized and accessible across all platforms.</p>
+    </section>
+
+    <div id="app">
+        <!-- The application will be rendered here -->
+         <hr>
+         <h2>Tip Calculator</h2>
+         <fieldset>
+            <label for="meal">Meal</label>
+            <input type="number" name="meal" id="meal">
+         </fieldset>
+         <fieldset>
+            <label for="tip">Tip Percentage</label>
+            <input type="number" name="tip" id="tip">
+         </fieldset>
+            <button id="calculate">Calculate Total</button>
+                <p id="result"></p>
+    </div>
+
+    <script>
+        let mealInput = document.querySelector('#meal').value;
+        let tipInput = document.querySelector('#tip').value;
+
+        document.querySelector('#calculate').addEventListener('click', function() {
+            let meal = parseFloat(document.querySelector('#meal').value);
+            let tipPercentage = parseFloat(document.querySelector('#tip').value);
+            let total = meal + (meal * (tipPercentage / 100));
+            document.querySelector('#result').textContent = `Total: $${total.toFixed(2)}`;
+        });
+    </script>
+</body>
+</html>
