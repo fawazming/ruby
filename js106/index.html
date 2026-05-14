@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS106</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+</head>
+<body>
+  <h1 style="font-family: Arial, Helvetica, sans-serif; color: orangered; font-weight: 700;">JS106</h1>
+  
+  <div id="app">
+        <!-- The application will be rendered here -->
+         <hr>
+         <h2 style="color: rgb(32, 32, 202);">Tip Calculator</h2>
+         <fieldset>
+            <label for="meal">Meal</label>
+            <input type="number" name="meal" id="meal">
+         </fieldset>
+         <fieldset>
+            <label for="tip">Tip Percentage</label>
+            <input type="number" name="tip" id="tip">
+         </fieldset>
+            <button id="calculate" style="background-color:orangered;">Calculate Total</button>
+                <p id="result"></p>
+    </div>
+
+  <script>
+        let mealInput = document.querySelector('#meal').value;
+        let tipInput = document.querySelector('#tip').value;
+
+        document.querySelector('#calculate').addEventListener('click', function() {
+            let meal = parseFloat(document.querySelector('#meal').value);
+            let tipPercentage = parseFloat(document.querySelector('#tip').value);
+            let total = meal + (meal * (tipPercentage / 100));
+            document.querySelector('#result').textContent = `Total: $${total.toFixed(2)}`;
+        });
+    </script>
+
+    <div id="demo">
+      <hr>
+      <h2 style="color: blue;">Pizza Division</h2>
+      <fieldset>
+        <label for="pizza">Pizza</label>
+        <input type="number" name="pizza" id="pizza">
+      </fieldset>
+      <fieldset>
+        <label for="slices">Number of Slices</label>
+        <input type="number" name="slices" id="slices">
+      </fieldset>
+      <fieldset>
+        <label for="people">Number of People</label>
+        <input type="number" name="people" id="people">
+      </fieldset>
+      <button id="calculate" style="background-color:orangered;">Calculate Slices</button>
+      <p id="res"></p>
+    </div>
+
+    <script>
+        let pizzaInput = document.querySelector('#pizza').value;
+        let slicesInput = document.querySelector('#slices').value;
+        let peopleInput = document.querySelector('#people').value;
+       
+        document.querySelector('#calculate').addEventListener('click', function() {
+            let pizza = parseFloat(document.querySelector('#pizza').value);
+            let slices = parseFloat(document.querySelector('#slices').value);
+            let people = parseFloat(document.querySelector('#people').value);
+            let slicesPerPerson = pizza * slices / people;
+            document.querySelector('#res').textContent = `slicesPerPerson: $${slicesPerPerson.toFixed(2)} slices.`;
+        });
+    </script>
+
+    <hr>
+         <h2 style="color: blue;">Step Calculator</h2>
+         <fieldset>
+            <label for="goal">Goal</label>
+            <input type="number" name="goal" id="goal">
+         </fieldset>
+         <fieldset>
+            <label for="steps">Steps</label>
+            <input type="number" name="steps" id="steps">
+         </fieldset>
+            <button id="result"style="background-color:orangered;" >Calculate </button>
+                <p id="output"></p>
+    </div>
+
+    <script>
+        let goalInput = document.querySelector('#goal').value;
+        let stepsInput = document.querySelector('#steps').value;
+
+        document.querySelector('#result').addEventListener('click', function() {
+            let goal = parseFloat(document.querySelector('#goal').value);
+            let steps = parseFloat(document.querySelector('#steps').value);
+            let stepsNeeded = goal - steps;
+            document.querySelector('#output').textContent = `Steps Needed: ${stepsNeeded} steps.`;
+        });
+    </script>
+
+    <hr>
+         <h2 style="color: blue;">Speed Calculator</h2>
+         <fieldset>
+            <label for="distance">Distance</label>
+            <input type="number" name="distance" id="distance">
+         </fieldset>
+         <fieldset>
+            <label for="time">Time</label>
+            <input type="number" name="time" id="time">
+         </fieldset>
+            <button id="calculate" style="background-color:orangered;">Calculate Speed</button>
+                <p id="tank"></p>
+                
+    </div>
+
+    <script>
+        let distanceInput = document.querySelector('#distance').value;
+        let timeInput = document.querySelector('#time').value;
+
+        document.querySelector('#calculate').addEventListener('click', function() {
+            let distance = parseFloat(document.querySelector('#distance').value);
+            let time = parseFloat(document.querySelector('#time').value);
+            let speed = distance/time;
+            document.querySelector('#tank').textContent = `Speed: ${speed.toFixed(2)} units per time.`;
+        }); 
+    </script>
+
+    <div>
+        <h2 style="color: blue;">Driving Action</h2>
+        <fieldset>
+            <label for="light">Traffic Light Color</label>
+            <input type="text" name="light" id="light">
+         </fieldset>
+            <button id="action" style="background-color:orangered;">Determine Action</button>
+                <p id="drive"></p>
+    </div>
+
+    <script>
+        function drivingAction(lightColor) {
+  if (lightColor === "green") {
+    return "Drive";
+    } else if (lightColor === "yellow") {
+    return "Slow down";
+  } else {
+    return "Stop";
+  }
+}
+    </script>
+</body>
+</html>
