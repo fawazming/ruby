@@ -7,12 +7,12 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
 </head>
 <body>
-  <h1>JS106</h1>
+  <h1 style="font-family: Arial, Helvetica, sans-serif; color: orangered; font-weight: 700;">JS106</h1>
   
   <div id="app">
         <!-- The application will be rendered here -->
          <hr>
-         <h2>Tip Calculator</h2>
+         <h2 style="color: rgb(32, 32, 202);">Tip Calculator</h2>
          <fieldset>
             <label for="meal">Meal</label>
             <input type="number" name="meal" id="meal">
@@ -21,7 +21,7 @@
             <label for="tip">Tip Percentage</label>
             <input type="number" name="tip" id="tip">
          </fieldset>
-            <button id="calculate">Calculate Total</button>
+            <button id="calculate" style="background-color:orangered;">Calculate Total</button>
                 <p id="result"></p>
     </div>
 
@@ -39,7 +39,7 @@
 
     <div id="demo">
       <hr>
-      <h2>Pizza Division</h2>
+      <h2 style="color: blue;">Pizza Division</h2>
       <fieldset>
         <label for="pizza">Pizza</label>
         <input type="number" name="pizza" id="pizza">
@@ -52,7 +52,7 @@
         <label for="people">Number of People</label>
         <input type="number" name="people" id="people">
       </fieldset>
-      <button id="calculate">Calculate Slices</button>
+      <button id="calculate" style="background-color:orangered;">Calculate Slices</button>
       <p id="res"></p>
     </div>
 
@@ -71,7 +71,7 @@
     </script>
 
     <hr>
-         <h2>Step Calculator</h2>
+         <h2 style="color: blue;">Step Calculator</h2>
          <fieldset>
             <label for="goal">Goal</label>
             <input type="number" name="goal" id="goal">
@@ -80,7 +80,7 @@
             <label for="steps">Steps</label>
             <input type="number" name="steps" id="steps">
          </fieldset>
-            <button id="calculate">Calculate </button>
+            <button id="result"style="background-color:orangered;" >Calculate </button>
                 <p id="output"></p>
     </div>
 
@@ -88,7 +88,7 @@
         let goalInput = document.querySelector('#goal').value;
         let stepsInput = document.querySelector('#steps').value;
 
-        document.querySelector('#calculate').addEventListener('click', function() {
+        document.querySelector('#result').addEventListener('click', function() {
             let goal = parseFloat(document.querySelector('#goal').value);
             let steps = parseFloat(document.querySelector('#steps').value);
             let stepsNeeded = goal - steps;
@@ -97,7 +97,7 @@
     </script>
 
     <hr>
-         <h2>Speed Calculator</h2>
+         <h2 style="color: blue;">Speed Calculator</h2>
          <fieldset>
             <label for="distance">Distance</label>
             <input type="number" name="distance" id="distance">
@@ -106,7 +106,7 @@
             <label for="time">Time</label>
             <input type="number" name="time" id="time">
          </fieldset>
-            <button id="calculate">Calculate Speed</button>
+            <button id="calculate" style="background-color:orangered;">Calculate Speed</button>
                 <p id="tank"></p>
                 
     </div>
@@ -123,5 +123,26 @@
         }); 
     </script>
 
+    <div>
+        <h2 style="color: blue;">Driving Action</h2>
+        <fieldset>
+            <label for="light">Traffic Light Color</label>
+            <input type="text" name="light" id="light">
+         </fieldset>
+            <button id="action" style="background-color:orangered;">Determine Action</button>
+                <p id="drive"></p>
+    </div>
+
+    <script>
+        function drivingAction(lightColor) {
+  if (lightColor === "green") {
+    return "Drive";
+    } else if (lightColor === "yellow") {
+    return "Slow down";
+  } else {
+    return "Stop";
+  }
+}
+    </script>
 </body>
 </html>
