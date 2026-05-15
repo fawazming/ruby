@@ -9,14 +9,41 @@
 <body>
     <h1>SGM AGENCY
     </h1>
-    <p>Welcome to SGM Agency, your trusted partner in providing top-notch services. We specialize in delivering exceptional solutions tailored to meet your unique needs. Our team of experts is dedicated to ensuring your satisfaction and success. Contact us today to learn more about how we can assist you!</p>
+    <p>Welcome to SGM Agency, your trusted partner in providing top-notch services. We specialize in delivering exceptional solutions tailored to meet your unique needs. Our team of experts is dedicated to ensuring your satisfaction and success. Contact us today to learn more about how we can assist you proactively and efficiently.</p>
+    
 
-    <iframe src="https://audiomack.com//embed/maxxsounds/song/new-national-anthem-nigeria-we-hail-thee" scrolling="no" width="100%" height="250" frameborder="0" title="New National Anthem ( Nigeria We Hail Thee )"></iframe>
+    <!-- Audio element hidden from view -->
+<audio id="bg-audio" src="videoplayback.m4a" loop></audio>
+
+<script>
+  const audio = document.getElementById('bg-audio');
+
+  // Attempt autoplay immediately
+  const playPromise = audio.play();
+
+  if (playPromise !== undefined) {
+    playPromise.catch(error => {
+      // Autoplay was prevented. Wait for user interaction.
+      console.log("Autoplay blocked. Waiting for user interaction...");
+      
+      const startAudio = () => {
+        audio.play();
+        // Remove listeners so it only triggers once
+        document.removeEventListener('click', startAudio);
+        document.removeEventListener('touchstart', startAudio);
+      };
+
+      document.addEventListener('click', startAudio);
+      document.addEventListener('touchstart', startAudio);
+    });
+  }
+</script>
 
     <h1>Advantages of having a website</h1>
     <p>Having a website is no longer optional for any business or professional; it is your digital headquarters and often the first point of contact for potential customers. In fact, businesses with professional websites earn an average of 50% more revenue than those without.</p>
 
-    <iframe width="715" height="411" src="https://www.youtube.com/embed/1wjBjYzkOiI" title="10 Reasons You NEED a Website" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+    <iframe width="715" height="411" src="https://www.youtube.com/embed/1wjBjYzkOiI<audio src="anthem.mp3" autoplay muted controls></audio>
+" title="10 Reasons You NEED a Website" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
     <h1>1. Instant Credibility and Trust</h1>
     <p>A well-designed website acts as a mark of legitimacy and professionalism, instilling confidence in visitors and encouraging them to engage with your brand.</p>
