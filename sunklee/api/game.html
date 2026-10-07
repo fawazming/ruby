@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrabble Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #board { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 2px; }
+        .cell {
+            aspect-ratio: 1 / 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: 700;
+            color: rgba(255,255,255,.9);
+            text-transform: uppercase;
+            cursor: pointer;
+            user-select: none;
+            background: #cbd5e1;
+        }
+        .cell.tw { background: #ef4444; }
+        .cell.dw { background: #f9a8d4; color: #9d174d; }
+        .cell.tl { background: #3b82f6; }
+        .cell.dl { background: #bae6fd; color: #075985; }
+        .cell.center { background: #f9a8d4; color: #9d174d; }
+        .cell.filled {
+            background: linear-gradient(180deg, #fde68a, #f59e0b);
+            color: #78350f;
+            box-shadow: inset 0 -2px 0 #b45309;
+            font-size: clamp(10px, 4.2vw, 18px);
+        }
+        .cell.filled .val { position: absolute; bottom: 0; right: 2px; font-size: 7px; font-weight: 700; }
+        .cell.filled.blank-origin { color: #b45309; font-style: italic; }
+        .cell.pending { outline: 2px solid #059669; outline-offset: -2px; }
+        .rtile {
+            width: 44px; height: 44px;
+            display: flex; align-items: center; justify-content: center;
+            position: relative;
+            border-radius: 6px;
+            background: linear-gradient(180deg, #fde68a, #f59e0b);
+            color: #78350f;
+            font-weight: 800; font-size: 20px;
+            box-shadow: 0 3px 0 #b45309;
+            cursor: pointer;
+            user-select: none;
+        }
+        .rtile.blank { background: linear-gradient(180deg, #e2e8f0, #94a3b8); color: #475569; box-shadow: 0 3px 0 #64748b; }
+        .rtile.selected { transform: translateY(-6px); outline: 3px solid #059669; }
+        .rtile .val { position: absolute; bottom: 2px; right: 4px; font-size: 10px; opacity: .8; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+    <div class="max-w-5xl mx-auto px-3 py-6">
+
+        <header class="flex items-center justify-between flex-wrap gap-3 mb-5">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">Scrabble Game</h1>
+                <p class="text-sm text-slate-500">Place tiles, submit, and every word is checked against the dictionary.</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="index.html" class="text-sm font-semibold text-slate-600 bg-white border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50">Apps</a>
+                <button id="new-game" class="text-sm font-semibold text-white bg-slate-700 px-3 py-2 rounded-lg hover:bg-slate-800">New game</button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
+            <!-- Board -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-3">
+                <div id="board" class="w-full"></div>
+                <p class="text-xs text-slate-400 mt-3">
+                    <span class="inline-block w-3 h-3 rounded-sm bg-red-500 align-middle"></span> Triple word
+                    <span class="inline-block w-3 h-3 rounded-sm bg-pink-300 align-middle ml-2"></span> Double word
+                    <span class="inline-block w-3 h-3 rounded-sm bg-blue-500 align-middle ml-2"></span> Triple letter
+                    <span class="inline-block w-3 h-3 rounded-sm bg-sky-200 align-middle ml-2"></span> Double letter
+                </p>
+            </div>
+
+            <!-- Side panel -->
+            <div class="space-y-4">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-slate-500">Score</span>
+                        <span id="score" class="text-2xl font-extrabold text-slate-900">0</span>
+                    </div>
+                    <div class="flex items-center justify-between mt-1">
+                        <span class="text-sm text-slate-500">Tiles in bag</span>
+                        <span id="bag-count" class="font-bold text-slate-700">0</span>
+                    </div>
+                    <div class="flex items-center justify-between mt-1">
+                        <span class="text-sm text-slate-500">Turn</span>
+                        <span id="turn" class="font-bold text-slate-700">1</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                    <h2 class="text-sm font-semibold uppercase tracking-widest text-slate-400 mb-3">Your rack</h2>
+                    <div id="rack" class="flex flex-wrap gap-2 min-h-[48px]"></div>
+                    <div class="grid grid-cols-3 gap-2 mt-4">
+                        <button id="submit" class="col-span-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg shadow-sm">Submit play</button>
+                        <button id="recall" class="text-sm font-semibold bg-slate-100 hover:bg-slate-200 py-2 rounded-lg">Recall</button>
+                        <button id="shuffle" class="text-sm font-semibold bg-slate-100 hover:bg-slate-200 py-2 rounded-lg">Shuffle</button>
+                        <button id="swap" class="text-sm font-semibold bg-slate-100 hover:bg-slate-200 py-2 rounded-lg">Swap</button>
+                        <button id="pass" class="col-span-3 text-sm font-semibold bg-slate-100 hover:bg-slate-200 py-2 rounded-lg">Pass turn</button>
+                    </div>
+                </div>
+
+                <div id="message" class="hidden text-sm rounded-xl px-4 py-3 border"></div>
+
+                <div id="hint" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-sm font-semibold uppercase tracking-widest text-slate-400">Best plays</h2>
+                        <button id="suggest" class="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded">Suggest</button>
+                    </div>
+                    <div id="suggestions" class="text-sm text-slate-500">Use <em>Suggest</em> to see words your rack can build.</div>
+                </div>
+            </div>
+        </div>
+
+        <p class="text-xs text-slate-400 mt-5 text-center">
+            Word data by <a href="https://wordsohard.com" target="_blank" rel="noopener" class="text-emerald-600 hover:underline">WordSoHard</a>
+        </p>
+    </div>
+
+    <script>
+        const API = 'https://wordsohard.com/api/v1';
+        const SIZE = 15;
+        const CENTER = 7;
+        const VALUES = { a:1,b:3,c:3,d:2,e:1,f:4,g:2,h:4,i:1,j:8,k:5,l:1,m:3,n:1,o:1,p:3,q:10,r:1,s:1,t:1,u:1,v:4,w:4,x:8,y:4,z:10 };
+        const DIST = { a:9,b:2,c:2,d:4,e:12,f:2,g:3,h:2,i:9,j:1,k:1,l:4,m:2,n:6,o:8,p:2,q:1,r:6,s:4,t:6,u:4,v:2,w:2,x:1,y:2,z:1 };
+
+        const PREMIUM = Array.from({ length: SIZE }, () => Array(SIZE).fill(''));
+        const setPrep = (list, code) => list.forEach(([r, c]) => PREMIUM[r][c] = code);
+        setPrep([[0,0],[0,7],[0,14],[7,0],[7,14],[14,0],[14,7],[14,14]], 'TW');
+        setPrep([[1,1],[2,2],[3,3],[4,4],[1,13],[2,12],[3,11],[4,10],[13,1],[12,2],[11,3],[10,4],[13,13],[12,12],[11,11],[10,10],[7,7]], 'DW');
+        setPrep([[1,5],[1,9],[5,1],[5,5],[5,9],[5,13],[9,1],[9,5],[9,9],[9,13],[13,5],[13,9]], 'TL');
+        setPrep([[0,3],[0,11],[2,6],[2,8],[3,0],[3,7],[3,14],[6,2],[6,6],[6,8],[6,12],[7,3],[7,11],[8,2],[8,6],[8,8],[8,12],[11,0],[11,7],[11,14],[12,6],[12,8],[14,3],[14,11]], 'DL');
+
+        const $ = (id) => document.getElementById(id);
+        const inBounds = (r, c) => r >= 0 && r < SIZE && c >= 0 && c < SIZE;
+
+        let board, bag, rack, score, turn, finalized, selected;
+
+        function newGame() {
+            board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+            bag = [];
+            for (const [letter, n] of Object.entries(DIST)) for (let i = 0; i < n; i++) bag.push(letter);
+            bag.push(null, null);
+            shuffleArr(bag);
+            rack = [];
+            score = 0;
+            turn = 1;
+            finalized = 0;
+            selected = null;
+            draw(7);
+            $('suggestions').innerHTML = 'Use <em>Suggest</em> to see words your rack can build.';
+            hideMessage();
+            render();
+        }
+
+        function shuffleArr(a) {
+            for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+        }
+
+        function draw(n) {
+            for (let i = 0; i < n && bag.length; i++) {
+                const t = bag.pop();
+                rack.push(t === null ? { letter: '', blank: true } : { letter: t, blank: false });
+            }
+        }
+
+        // ---- rendering ----
+        function render() { renderBoard(); renderRack(); renderStats(); }
+
+        function renderBoard() {
+            const el = $('board');
+            el.innerHTML = '';
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    const cell = document.createElement('div');
+                    const prem = PREMIUM[r][c];
+                    cell.className = 'cell';
+                    const isCenter = r === CENTER && c === CENTER;
+                    if (prem === 'TW') cell.classList.add('tw');
+                    else if (prem === 'DW') cell.classList.add('dw');
+                    else if (prem === 'TL') cell.classList.add('tl');
+                    else if (prem === 'DL') cell.classList.add('dl');
+                    else if (isCenter) cell.classList.add('center');
+
+                    const t = board[r][c];
+                    if (t) {
+                        cell.classList.add('filled');
+                        if (t.pending) cell.classList.add('pending');
+                        if (t.blank) cell.classList.add('blank-origin');
+                        cell.innerHTML = t.letter.toUpperCase() +
+                            '<span class="val">' + (t.blank ? 0 : (VALUES[t.letter] || 0)) + '</span>';
+                    } else if (isCenter) {
+                        cell.textContent = '\u2605';
+                    } else if (prem) {
+                        cell.textContent = prem;
+                    }
+                    cell.addEventListener('click', () => onCell(r, c));
+                    el.appendChild(cell);
+                }
+            }
+        }
+
+        function renderRack() {
+            const el = $('rack');
+            el.innerHTML = '';
+            if (!rack.length) { el.innerHTML = '<span class="text-sm text-slate-400">Rack is empty.</span>'; return; }
+            rack.forEach((t, i) => {
+                const d = document.createElement('div');
+                d.className = 'rtile' + (t.blank ? ' blank' : '') + (i === selected ? ' selected' : '');
+                d.innerHTML = (t.blank ? '&nbsp;' : t.letter.toUpperCase()) +
+                    '<span class="val">' + (t.blank ? 0 : (VALUES[t.letter] || 0)) + '</span>';
+                d.addEventListener('click', () => { selected = (selected === i ? null : i); renderRack(); });
+                el.appendChild(d);
+            });
+        }
+
+        function renderStats() {
+            $('score').textContent = score;
+            $('bag-count').textContent = bag.length;
+            $('turn').textContent = turn;
+        }
+
+        // ---- placing tiles ----
+        function onCell(r, c) {
+            const t = board[r][c];
+            if (t) {
+                if (t.pending) { // return to rack
+                    rack.push({ letter: t.letter, blank: t.blank });
+                    board[r][c] = null;
+                    render();
+                }
+                return;
+            }
+            if (selected === null) { showMessage('info', 'Select a tile from your rack first.'); return; }
+            const tile = rack[selected];
+            let letter = tile.letter;
+            if (tile.blank) {
+                const ans = prompt('This blank represents which letter?');
+                if (!ans) return;
+                letter = String(ans).toLowerCase().replace(/[^a-z]/g, '')[0];
+                if (!letter) return;
+            }
+            board[r][c] = { letter, blank: tile.blank, pending: true };
+            rack.splice(selected, 1);
+            selected = null;
+            hideMessage();
+            render();
+        }
+
+        function pendingCells() {
+            const out = [];
+            for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (board[r][c] && board[r][c].pending) out.push({ r, c });
+            return out;
+        }
+
+        // ---- move validation & scoring ----
+        function collectWords(pending) {
+            const words = [];
+            const seen = new Set();
+            for (const { r, c } of pending) {
+                for (const [dr, dc] of [[0, 1], [1, 0]]) {
+                    let sr = r, sc = c;
+                    while (inBounds(sr - dr, sc - dc) && board[sr - dr][sc - dc]) { sr -= dr; sc -= dc; }
+                    const cells = [];
+                    let cr = sr, cc = sc;
+                    while (inBounds(cr, cc) && board[cr][cc]) { cells.push({ r: cr, c: cc }); cr += dr; cc += dc; }
+                    if (cells.length < 2) continue;
+                    const key = sr + ',' + sc + ',' + dr + ',' + dc;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    const word = cells.map(x => board[x.r][x.c].letter).join('');
+                    words.push({ word, cells });
+                }
+            }
+            return words;
+        }
+
+        function scoreWord(cells) {
+            let total = 0, wordMult = 1;
+            for (const { r, c } of cells) {
+                const t = board[r][c];
+                let v = t.blank ? 0 : (VALUES[t.letter] || 0);
+                if (t.pending) {
+                    const p = PREMIUM[r][c];
+                    if (p === 'DL') v *= 2;
+                    else if (p === 'TL') v *= 3;
+                    else if (p === 'DW') wordMult *= 2;
+                    else if (p === 'TW') wordMult *= 3;
+                }
+                total += v;
+            }
+            return total * wordMult;
+        }
+
+        async function checkWords(words) {
+            const results = [];
+            for (let i = 0; i < words.length; i += 20) {
+                const chunk = words.slice(i, i + 20);
+                const res = await fetch(`${API}/check/${chunk.join(',')}`);
+                if (!res.ok) throw new Error('Dictionary request failed');
+                const data = await res.json();
+                results.push(...data.results);
+            }
+            return results;
+        }
+
+        async function submit() {
+            const pending = pendingCells();
+            if (!pending.length) return showMessage('info', 'Place some tiles on the board first.');
+
+            const rows = new Set(pending.map(p => p.r));
+            const cols = new Set(pending.map(p => p.c));
+            if (rows.size > 1 && cols.size > 1) return showMessage('error', 'Tiles must all be in one row or one column.');
+
+            const horizontal = rows.size === 1;
+            const fixed = horizontal ? pending[0].r : pending[0].c;
+            const along = pending.map(p => horizontal ? p.c : p.r);
+            const min = Math.min(...along), max = Math.max(...along);
+            for (let v = min; v <= max; v++) {
+                const cell = horizontal ? board[fixed][v] : board[v][fixed];
+                if (!cell) return showMessage('error', 'Your tiles must form a single continuous line.');
+            }
+
+            if (finalized === 0) {
+                if (!pending.some(p => p.r === CENTER && p.c === CENTER)) {
+                    return showMessage('error', 'The first word must cover the center star.');
+                }
+            } else {
+                const touches = pending.some(p =>
+                    (inBounds(p.r - 1, p.c) && board[p.r - 1][p.c] && !board[p.r - 1][p.c].pending) ||
+                    (inBounds(p.r + 1, p.c) && board[p.r + 1][p.c] && !board[p.r + 1][p.c].pending) ||
+                    (inBounds(p.r, p.c - 1) && board[p.r][p.c - 1] && !board[p.r][p.c - 1].pending) ||
+                    (inBounds(p.r, p.c + 1) && board[p.r][p.c + 1] && !board[p.r][p.c + 1].pending));
+                if (!touches) return showMessage('error', 'New words must connect to tiles already on the board.');
+            }
+
+            const words = collectWords(pending);
+            if (!words.length) return showMessage('error', 'Your play must form a word of at least two letters.');
+
+            showMessage('info', 'Checking words...');
+            let results;
+            try {
+                results = await checkWords([...new Set(words.map(w => w.word))]);
+            } catch (err) {
+                return showMessage('error', 'Could not reach the dictionary: ' + err.message);
+            }
+
+            const invalid = results.filter(r => !r.valid);
+            if (invalid.length) {
+                return showMessage('error', 'Not valid: ' + invalid.map(r => r.word.toUpperCase()).join(', '));
+            }
+
+            let gained = words.reduce((sum, w) => sum + scoreWord(w.cells), 0);
+            const bingo = pending.length === 7;
+            if (bingo) gained += 50;
+
+            for (const p of pending) board[p.r][p.c].pending = false;
+            finalized += pending.length;
+            score += gained;
+            turn++;
+            selected = null;
+            draw(7 - rack.length);
+
+            render();
+            showMessage('success', `Played ${[...new Set(words.map(w => w.word.toUpperCase()))].join(', ')} for ${gained} points${bingo ? ' (BINGO +50)' : ''}.`);
+        }
+
+        function pass() {
+            turn++;
+            recallAll();
+            selected = null;
+            render();
+            showMessage('info', 'Turn passed.');
+        }
+
+        function swap() {
+            if (selected === null) return showMessage('info', 'Select a rack tile to swap.');
+            const t = rack.splice(selected, 1)[0];
+            bag.push(t.letter === '' ? null : t.letter);
+            shuffleArr(bag);
+            selected = null;
+            draw(1);
+            recallAll();
+            render();
+            showMessage('info', 'Swapped one tile.');
+        }
+
+        function recallAll() {
+            for (const p of pendingCells()) {
+                const t = board[p.r][p.c];
+                rack.push({ letter: t.letter, blank: t.blank });
+                board[p.r][p.c] = null;
+            }
+        }
+
+        function recallButton() { recallAll(); selected = null; render(); hideMessage(); }
+
+        async function suggest() {
+            if (!rack.length) return showMessage('info', 'Your rack is empty.');
+            const letters = rack.map(t => t.blank ? '_' : t.letter).join('');
+            $('suggestions').innerHTML = '<span class="text-slate-400">Loading...</span>';
+            try {
+                const res = await fetch(`${API}/unscramble/${encodeURIComponent(letters)}?sort=score&limit=8&minLength=2`);
+                const data = await res.json();
+                if (!data.words || !data.words.length) {
+                    $('suggestions').innerHTML = '<span class="text-slate-400">No words from this rack.</span>';
+                    return;
+                }
+                $('suggestions').innerHTML = '<div class="flex flex-wrap gap-1.5">' + data.words.map(w =>
+                    `<span class="px-2 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-semibold">${w.word.toUpperCase()} <span class="text-emerald-600">${w.score}</span></span>`
+                ).join('') + '</div>';
+            } catch (err) {
+                $('suggestions').innerHTML = '<span class="text-red-500">Could not load suggestions.</span>';
+            }
+        }
+
+        // ---- messages ----
+        function showMessage(type, text) {
+            const el = $('message');
+            el.className = 'text-sm rounded-xl px-4 py-3 border ';
+            if (type === 'success') el.className += 'bg-emerald-50 border-emerald-200 text-emerald-800';
+            else if (type === 'error') el.className += 'bg-red-50 border-red-200 text-red-700';
+            else el.className += 'bg-slate-50 border-slate-200 text-slate-600';
+            el.textContent = text;
+            el.classList.remove('hidden');
+        }
+        function hideMessage() { $('message').classList.add('hidden'); }
+
+        // ---- events ----
+        $('submit').addEventListener('click', submit);
+        $('recall').addEventListener('click', recallButton);
+        $('shuffle').addEventListener('click', () => { shuffleArr(rack); selected = null; renderRack(); });
+        $('swap').addEventListener('click', swap);
+        $('pass').addEventListener('click', pass);
+        $('suggest').addEventListener('click', suggest);
+        $('new-game').addEventListener('click', newGame);
+
+        newGame();
+    </script>
+</body>
+</html>
