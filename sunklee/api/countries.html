@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Countries Data Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .card { transition: box-shadow .15s, border-color .15s, transform .1s; }
+        .card:hover { transform: translateY(-2px); }
+        .scroll-thin::-webkit-scrollbar { width: 8px; }
+        .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+                <div class="flex items-center gap-3">
+                    <span class="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-2xl">&#127758;</span>
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">Countries Data</h1>
+                        <p class="text-xs text-slate-500">250+ countries &middot; 90+ fields &middot; live from REST Countries</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="index.html" class="text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg">Apps</a>
+                    <button id="reload" class="text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded-lg">Reload</button>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-12 gap-3">
+                <div class="md:col-span-5 relative">
+                    <input id="search" type="text" placeholder="Search country, capital, code, currency, language..."
+                        class="w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                    <span class="absolute left-3 top-3 text-slate-400">&#128269;</span>
+                </div>
+                <select id="region" class="md:col-span-2 px-3 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                    <option value="">All regions</option>
+                </select>
+                <select id="membership" class="md:col-span-2 px-3 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                    <option value="">All memberships</option>
+                </select>
+                <select id="sort" class="md:col-span-2 px-3 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                    <option value="name">Name (A-Z)</option>
+                    <option value="name-desc">Name (Z-A)</option>
+                    <option value="pop-desc">Population (high)</option>
+                    <option value="pop-asc">Population (low)</option>
+                    <option value="area-desc">Area (large)</option>
+                    <option value="area-asc">Area (small)</option>
+                </select>
+                <button id="reset" class="md:col-span-1 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-2.5 rounded-lg">Reset</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Stats -->
+        <section id="stats" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"></section>
+
+        <div id="status" class="hidden text-center py-16"></div>
+        <div id="error" class="hidden text-center py-16"></div>
+
+        <section>
+            <div class="flex items-center justify-between mb-3">
+                <h2 id="result-title" class="font-bold text-slate-700">Countries</h2>
+                <span id="page-info" class="text-sm text-slate-500"></span>
+            </div>
+            <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+            <div id="pager" class="flex items-center justify-center gap-2 mt-6"></div>
+        </section>
+
+        <p class="text-xs text-slate-400 mt-10 text-center">
+            Data by <a href="https://restcountries.com" target="_blank" rel="noopener" class="text-indigo-600 hover:underline">REST Countries</a>
+            &nbsp;&middot;&nbsp; <a href="../index.html" class="text-indigo-600 hover:underline">Back to portfolio</a>
+        </p>
+    </main>
+
+    <!-- Detail modal -->
+    <div id="modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full my-8">
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script>
+        // API key is stored obfuscated (XOR + base64), never as plaintext in the repo.
+        const _p = ['sunklee', 'countries', 'v5', 'dashboard'].join('.');
+        const _b = 'ARYxBwUTAHEBXhRWEEANUkYeEAcaBQQRUVZfVUIAFkNZW1oDV0oGVw==';
+        function apiKey() {
+            const raw = atob(_b);
+            let k = '';
+            for (let i = 0; i < raw.length; i++) k += String.fromCharCode(raw.charCodeAt(i) ^ _p.charCodeAt(i % _p.length));
+            return k;
+        }
+
+        const BASE = 'https://api.restcountries.com/countries/v5';
+        const FIELDS = [
+            'names.common', 'names.official', 'names.native', 'codes.alpha_2', 'codes.alpha_3', 'codes.ccn3',
+            'capitals', 'demonyms', 'flag.emoji', 'flag.url_svg', 'flag.url_png', 'region', 'subregion',
+            'population', 'area.kilometers', 'languages', 'currencies', 'calling_codes', 'timezones',
+            'tlds', 'borders', 'memberships', 'links'
+        ].join(',');
+
+        const $ = (id) => document.getElementById(id);
+        const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const fmt = (n) => (n == null || n === '') ? '—' : new Intl.NumberFormat('en-US').format(n);
+        const titleCase = (s) => String(s || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+        let ALL = [], filtered = [], page = 1;
+        const PAGE_SIZE = 24;
+
+        async function apiGet(params) {
+            const url = new URL(BASE);
+            Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+            const res = await fetch(url, { headers: { Authorization: 'Bearer ' + apiKey() } });
+            if (!res.ok) {
+                let msg = 'HTTP ' + res.status;
+                try { const e = await res.json(); msg = (e.errors && e.errors[0] && e.errors[0].message) || msg; } catch (_) {}
+                throw new Error(msg);
+            }
+            return res.json();
+        }
+
+        async function loadAll() {
+            showStatus('Loading country data...');
+            hideError();
+            const pages = await Promise.all([0, 100, 200].map(offset =>
+                apiGet({ limit: 100, offset, response_fields: FIELDS })));
+            ALL = pages.flatMap(p => p.data.objects);
+            buildFilters();
+            applyFilters();
+        }
+
+        function buildFilters() {
+            const regions = [...new Set(ALL.map(c => c.region).filter(Boolean))].sort();
+            $('region').innerHTML = '<option value="">All regions</option>' +
+                regions.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+
+            const memSet = new Set();
+            ALL.forEach(c => Object.keys(c.memberships || {}).forEach(k => { if (c.memberships[k]) memSet.add(k); }));
+            $('membership').innerHTML = '<option value="">All memberships</option>' +
+                [...memSet].sort().map(m => `<option value="${esc(m)}">${esc(titleCase(m))}</option>`).join('');
+        }
+
+        function haystack(c) {
+            const parts = [
+                c.names && c.names.common, c.names && c.names.official,
+                c.codes && c.codes.alpha_2, c.codes && c.codes.alpha_3,
+                c.region, c.subregion,
+            ];
+            (c.capitals || []).forEach(x => parts.push(x.name));
+            (c.currencies || []).forEach(x => parts.push(x.code, x.name));
+            (c.languages || []).forEach(x => parts.push(x.name, x.native_name));
+            return parts.filter(Boolean).join(' ').toLowerCase();
+        }
+
+        function applyFilters() {
+            const q = $('search').value.trim().toLowerCase();
+            const region = $('region').value;
+            const mem = $('membership').value;
+            const sort = $('sort').value;
+
+            filtered = ALL.filter(c => {
+                if (region && c.region !== region) return false;
+                if (mem && !(c.memberships && c.memberships[mem])) return false;
+                if (q && !haystack(c).includes(q)) return false;
+                return true;
+            });
+
+            const num = (v) => (typeof v === 'number' ? v : -Infinity);
+            const nameOf = (c) => (c.names && c.names.common || '').toLowerCase();
+            const cmp = {
+                'name': (a, b) => nameOf(a).localeCompare(nameOf(b)),
+                'name-desc': (a, b) => nameOf(b).localeCompare(nameOf(a)),
+                'pop-desc': (a, b) => num(b.population) - num(a.population),
+                'pop-asc': (a, b) => num(a.population) - num(b.population),
+                'area-desc': (a, b) => num(b.area && b.area.kilometers) - num(a.area && a.area.kilometers),
+                'area-asc': (a, b) => num(a.area && a.area.kilometers) - num(b.area && b.area.kilometers),
+            }[sort] || cmp0;
+            function cmp0(a, b) { return 0; }
+            filtered.sort(cmp);
+
+            page = 1;
+            renderStats();
+            renderGrid();
+        }
+
+        function renderStats() {
+            const pop = filtered.reduce((s, c) => s + (c.population || 0), 0);
+            const area = filtered.reduce((s, c) => s + ((c.area && c.area.kilometers) || 0), 0);
+            const regions = new Set(filtered.map(c => c.region).filter(Boolean)).size;
+            const stat = (label, value, accent) => `
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                    <p class="text-xs uppercase tracking-widest text-slate-400 mb-1">${label}</p>
+                    <p class="text-2xl font-extrabold ${accent}">${value}</p>
+                </div>`;
+            $('stats').innerHTML =
+                stat('Countries', fmt(filtered.length), 'text-slate-900') +
+                stat('Population', fmt(pop), 'text-indigo-600') +
+                stat('Land area', fmt(Math.round(area)) + ' km²', 'text-emerald-600') +
+                stat('Regions', regions, 'text-amber-600');
+        }
+
+        function flagHTML(c, size) {
+            const url = c.flag && c.flag.url_png;
+            const emoji = c.flag && c.flag.emoji;
+            const dim = size === 'lg' ? 'w-24 h-16' : 'w-12 h-9';
+            if (url) return `<img src="${esc(url)}" alt="" loading="lazy" class="${dim} object-cover rounded shadow-sm bg-slate-100" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${emoji ? esc(emoji) : '🌍'}',className:'${size === 'lg' ? 'text-5xl' : 'text-3xl'}'}))">`;
+            return `<span class="${size === 'lg' ? 'text-5xl' : 'text-3xl'}">${emoji ? esc(emoji) : '&#127758;'}</span>`;
+        }
+
+        function currencyText(c) {
+            return (c.currencies || []).map(x => `${x.name}${x.symbol ? ' (' + x.symbol + ')' : ''}`).join(', ') || '—';
+        }
+
+        function renderGrid() {
+            if (!filtered.length) {
+                $('grid').innerHTML = '';
+                $('pager').innerHTML = '';
+                $('result-title').textContent = 'Countries';
+                $('page-info').textContent = '';
+                showStatus('No countries match your filters.');
+                return;
+            }
+            hideStatus();
+            const pages = Math.ceil(filtered.length / PAGE_SIZE);
+            if (page > pages) page = pages;
+            const start = (page - 1) * PAGE_SIZE;
+            const slice = filtered.slice(start, start + PAGE_SIZE);
+
+            $('result-title').textContent = `Countries (${fmt(filtered.length)})`;
+            $('page-info').textContent = `Page ${page} of ${pages}`;
+
+            $('grid').innerHTML = slice.map((c) => {
+                const idx = ALL.indexOf(c);
+                const capital = (c.capitals || []).map(x => x.name).join(', ') || '—';
+                return `<button class="card text-left bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-lg hover:border-indigo-300" data-idx="${idx}">
+                    <div class="flex items-start gap-3">
+                        <div class="shrink-0">${flagHTML(c)}</div>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="font-bold text-slate-900 truncate">${esc(c.names && c.names.common || 'Unknown')}</h3>
+                            <p class="text-xs text-slate-500 truncate">${esc(c.names && c.names.official || '')}</p>
+                            <div class="mt-1 flex flex-wrap gap-1">
+                                <span class="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[10px] font-semibold">${esc(c.region || '—')}</span>
+                                ${c.codes && c.codes.alpha_3 ? `<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">${esc(c.codes.alpha_3)}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                        <div><dt class="text-slate-400">Capital</dt><dd class="text-slate-700 font-medium truncate">${esc(capital)}</dd></div>
+                        <div><dt class="text-slate-400">Population</dt><dd class="text-slate-700 font-medium">${fmt(c.population)}</dd></div>
+                        <div><dt class="text-slate-400">Area</dt><dd class="text-slate-700 font-medium">${c.area && c.area.kilometers ? fmt(Math.round(c.area.kilometers)) + ' km²' : '—'}</dd></div>
+                        <div><dt class="text-slate-400">Currency</dt><dd class="text-slate-700 font-medium truncate">${esc((c.currencies && c.currencies[0] && c.currencies[0].code) || '—')}</dd></div>
+                    </dl>
+                </button>`;
+            }).join('');
+
+            renderPager(pages);
+        }
+
+        function renderPager(pages) {
+            const btn = (label, p, disabled) =>
+                `<button class="page-btn px-3 py-1.5 rounded-lg border text-sm font-semibold ${disabled ? 'border-slate-200 text-slate-300 cursor-not-allowed' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}" data-page="${p}" ${disabled ? 'disabled' : ''}>${label}</button>`;
+            $('pager').innerHTML =
+                btn('&larr; Prev', page - 1, page <= 1) +
+                `<span class="px-3 text-sm text-slate-500">${page} / ${pages}</span>` +
+                btn('Next &rarr;', page + 1, page >= pages);
+        }
+
+        function showDetail(idx) {
+            const c = ALL[idx];
+            if (!c) return;
+            const rows = [];
+            const add = (label, value) => { if (value && value !== '—') rows.push([label, value]); };
+
+            add('Official name', esc(c.names && c.names.official));
+            add('ISO alpha-2', esc(c.codes && c.codes.alpha_2));
+            add('ISO alpha-3', esc(c.codes && c.codes.alpha_3));
+            add('Numeric code', esc(c.codes && c.codes.ccn3));
+            add('Region', esc(c.region));
+            add('Subregion', esc(c.subregion));
+            add('Capital', esc((c.capitals || []).map(x => x.name + (x.attributes && x.attributes.primary ? ' (primary)' : '')).join(', ')));
+            add('Population', fmt(c.population));
+            add('Area', c.area && c.area.kilometers ? fmt(Math.round(c.area.kilometers)) + ' km² (' + fmt(Math.round(c.area.miles || 0)) + ' mi²)' : '');
+            add('Currency', esc(currencyText(c)));
+            add('Languages', esc((c.languages || []).map(x => x.name).join(', ')));
+            add('Calling code', esc((c.calling_codes || []).map(x => '+' + x).join(', ')));
+            add('Timezones', esc((c.timezones || []).join(', ')));
+            add('Internet TLD', esc((c.tlds || []).join(', ')));
+            add('Demonym', esc(c.demonyms && c.demonyms.eng && c.demonyms.eng.m));
+            add('Borders', (c.borders || []).length ? (c.borders.map(b => `<span class="inline-block px-1.5 py-0.5 mr-1 mb-1 rounded bg-slate-100 text-slate-600 text-xs font-semibold">${esc(b)}</span>`).join('')) : '');
+
+            const mems = Object.keys(c.memberships || {}).filter(k => c.memberships[k]);
+            const memHTML = mems.length ? mems.map(m => `<span class="inline-block px-2 py-0.5 mr-1 mb-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">${esc(titleCase(m))}</span>`).join('') : '<span class="text-slate-400">None listed</span>';
+
+            const links = c.links || {};
+            const linkItems = [
+                ['Wikipedia', links.wikipedia],
+                ['Official', links.official],
+                ['Google Maps', links.google_maps],
+                ['OpenStreetMap', links.open_street_maps],
+            ].filter(([, u]) => u);
+
+            $('modal-body').innerHTML = `
+                <div class="p-6 border-b border-slate-200 flex items-start justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div>${flagHTML(c, 'lg')}</div>
+                        <div>
+                            <h2 class="text-2xl font-extrabold text-slate-900">${esc(c.names && c.names.common || 'Unknown')}</h2>
+                            <p class="text-sm text-slate-500">${esc(c.names && c.names.official || '')}</p>
+                        </div>
+                    </div>
+                    <button id="close-modal" class="text-slate-400 hover:text-slate-700 text-3xl leading-none">&times;</button>
+                </div>
+                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 scroll-thin">
+                    ${rows.map(([l, v]) => `<div class="border-b border-slate-100 pb-2"><dt class="text-xs uppercase tracking-wide text-slate-400">${l}</dt><dd class="text-slate-800">${v}</dd></div>`).join('')}
+                </div>
+                <div class="px-6 pb-4">
+                    <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">Memberships</p>
+                    <div>${memHTML}</div>
+                </div>
+                ${linkItems.length ? `<div class="px-6 pb-6 flex flex-wrap gap-2">${linkItems.map(([l, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener" class="text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg">${l}</a>`).join('')}</div>` : ''}
+            `;
+            $('modal').classList.remove('hidden');
+        }
+
+        // ---- status helpers ----
+        function showStatus(msg) { const s = $('status'); s.textContent = msg; s.classList.remove('hidden'); }
+        function hideStatus() { $('status').classList.add('hidden'); }
+        function showError(msg) { const e = $('error'); e.innerHTML = `<p class="text-red-600 font-medium">${esc(msg)}</p>`; e.classList.remove('hidden'); }
+        function hideError() { $('error').classList.add('hidden'); }
+
+        // ---- events ----
+        let t;
+        $('search').addEventListener('input', () => { clearTimeout(t); t = setTimeout(applyFilters, 180); });
+        $('region').addEventListener('change', applyFilters);
+        $('membership').addEventListener('change', applyFilters);
+        $('sort').addEventListener('change', applyFilters);
+        $('reset').addEventListener('click', () => {
+            $('search').value = ''; $('region').value = ''; $('membership').value = ''; $('sort').value = 'name';
+            applyFilters();
+        });
+        $('reload').addEventListener('click', () => loadAll().catch(err => { hideStatus(); showError('Could not load data: ' + err.message); }));
+
+        $('grid').addEventListener('click', (e) => {
+            const card = e.target.closest('[data-idx]');
+            if (card) showDetail(parseInt(card.dataset.idx, 10));
+        });
+        $('pager').addEventListener('click', (e) => {
+            const b = e.target.closest('.page-btn');
+            if (!b || b.disabled) return;
+            page = parseInt(b.dataset.page, 10);
+            renderGrid();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        $('modal').addEventListener('click', (e) => {
+            if (e.target === $('modal') || e.target.id === 'close-modal') $('modal').classList.add('hidden');
+        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('modal').classList.add('hidden'); });
+
+        loadAll().catch(err => { hideStatus(); showError('Could not load country data: ' + err.message); });
+    </script>
+</body>
+</html>

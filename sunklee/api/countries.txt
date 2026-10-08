@@ -1,0 +1,6 @@
+API Docs: https://restcountries.com/docs/countries
+
+Use the above to create a comprehensive country data dashboard. Obfuscate the api key before deployment such that, its not directly availbe in the repo
+
+API Key: removed from this file for safety. It is stored obfuscated (XOR + base64)
+in countries.html (see apiKey()). Do not commit the plaintext key.
