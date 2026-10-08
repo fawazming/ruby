@@ -115,7 +115,7 @@
                         <h2 class="text-sm font-semibold uppercase tracking-widest text-slate-400">Best plays</h2>
                         <button id="suggest" class="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded">Suggest</button>
                     </div>
-                    <div id="suggestions" class="text-sm text-slate-500">Use <em>Suggest</em> to see words your rack can build.</div>
+                    <div id="suggestions" class="text-sm text-slate-500">Use <em>Suggest</em> for board-aware play suggestions.</div>
                 </div>
             </div>
         </div>
@@ -143,6 +143,9 @@
         const inBounds = (r, c) => r >= 0 && r < SIZE && c >= 0 && c < SIZE;
 
         let board, bag, rack, score, turn, finalized, selected;
+        let candCache = new Map();
+        let currentMoves = [];
+        const dictCache = new Map();
 
         function newGame() {
             board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
@@ -156,7 +159,9 @@
             finalized = 0;
             selected = null;
             draw(7);
-            $('suggestions').innerHTML = 'Use <em>Suggest</em> to see words your rack can build.';
+            candCache.clear();
+            currentMoves = [];
+            $('suggestions').innerHTML = 'Use <em>Suggest</em> for board-aware play suggestions.';
             hideMessage();
             render();
         }
@@ -403,23 +408,282 @@
 
         function recallButton() { recallAll(); selected = null; render(); hideMessage(); }
 
+        // ---- board-aware move suggestions ----
+        async function validateWords(words) {
+            const unique = [...new Set(words)];
+            const unknown = unique.filter(w => !dictCache.has(w));
+            for (let i = 0; i < unknown.length; i += 20) {
+                const chunk = unknown.slice(i, i + 20);
+                const res = await fetch(`${API}/check/${chunk.join(',')}`);
+                if (!res.ok) throw new Error('Dictionary request failed');
+                const data = await res.json();
+                for (const r of data.results) dictCache.set(r.word, r.valid);
+            }
+            const map = {};
+            unique.forEach(w => map[w] = dictCache.get(w));
+            return map;
+        }
+
+        function hasBoardNeighbor(r, c) {
+            return (inBounds(r - 1, c) && board[r - 1][c]) ||
+                   (inBounds(r + 1, c) && board[r + 1][c]) ||
+                   (inBounds(r, c - 1) && board[r][c - 1]) ||
+                   (inBounds(r, c + 1) && board[r][c + 1]);
+        }
+
+        function occupied(r, c, overlay) { return !!board[r][c] || overlay.has(r + ',' + c); }
+
+        function wordThrough(r, c, dir, overlay) {
+            const [dr, dc] = dir;
+            let sr = r, sc = c;
+            while (inBounds(sr - dr, sc - dc) && occupied(sr - dr, sc - dc, overlay)) { sr -= dr; sc -= dc; }
+            const cells = [];
+            let cr = sr, cc = sc;
+            while (inBounds(cr, cc) && occupied(cr, cc, overlay)) { cells.push({ r: cr, c: cc }); cr += dr; cc += dc; }
+            return cells;
+        }
+
+        function lettersOf(cells, overlay) {
+            return cells.map(({ r, c }) => {
+                const t = board[r][c];
+                if (t) return t.letter;
+                const o = overlay.get(r + ',' + c);
+                return o ? o.letter : '?';
+            }).join('');
+        }
+
+        function planBlanks(needed) {
+            const counts = {};
+            rack.forEach(t => { if (!t.blank) counts[t.letter] = (counts[t.letter] || 0) + 1; });
+            let blanks = rack.filter(t => t.blank).length;
+            const plan = [];
+            for (const L of needed) {
+                if (counts[L] > 0) { counts[L]--; plan.push(false); }
+                else if (blanks > 0) { blanks--; plan.push(true); }
+                else return null;
+            }
+            return plan;
+        }
+
+        function scoreCells(cells, overlay) {
+            let total = 0, wordMult = 1;
+            for (const { r, c } of cells) {
+                const t = board[r][c];
+                let letter, blank, isNew;
+                if (t) { letter = t.letter; blank = t.blank; isNew = false; }
+                else { const o = overlay.get(r + ',' + c); letter = o.letter; blank = o.blank; isNew = true; }
+                let v = blank ? 0 : (VALUES[letter] || 0);
+                if (isNew) {
+                    const p = PREMIUM[r][c];
+                    if (p === 'DL') v *= 2;
+                    else if (p === 'TL') v *= 3;
+                    else if (p === 'DW') wordMult *= 2;
+                    else if (p === 'TW') wordMult *= 3;
+                }
+                total += v;
+            }
+            return total * wordMult;
+        }
+
+        function boardSig() {
+            let s = '';
+            for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) { const t = board[r][c]; if (t) s += r + ',' + c + t.letter + ';'; }
+            return s + '#' + rack.map(t => t.blank ? '_' : t.letter).join('');
+        }
+
+        async function unscrambleReq(letters, limit) {
+            const res = await fetch(`${API}/unscramble/${encodeURIComponent(letters)}?sort=score&limit=${limit}&minLength=2`);
+            if (!res.ok) throw new Error('unscramble ' + res.status);
+            const d = await res.json();
+            return (d.words || []).map(w => w.word);
+        }
+
+        function boardLines() {
+            const lines = [];
+            for (let r = 0; r < SIZE; r++) {
+                let c = 0;
+                while (c < SIZE) {
+                    if (board[r][c]) {
+                        let s = '';
+                        while (c < SIZE && board[r][c]) { s += board[r][c].letter; c++; }
+                        lines.push(s);
+                    } else c++;
+                }
+            }
+            for (let c = 0; c < SIZE; c++) {
+                let r = 0;
+                while (r < SIZE) {
+                    if (board[r][c]) {
+                        let s = '';
+                        while (r < SIZE && board[r][c]) { s += board[r][c].letter; r++; }
+                        lines.push(s);
+                    } else r++;
+                }
+            }
+            return [...new Set(lines)];
+        }
+
+        async function getCandidateWords() {
+            const sig = boardSig();
+            if (candCache.has(sig)) return candCache.get(sig);
+            const rackStr = rack.map(t => t.blank ? '_' : t.letter).join('');
+            const set = new Set();
+            (await unscrambleReq(rackStr, 300)).forEach(w => set.add(w));
+
+            // Words that extend or cross an existing board line: combine the rack
+            // with each line's letters, then keep only words that contain the line.
+            const blanks = rack.filter(t => t.blank).length;
+            const maxTiles = blanks >= 2 ? 8 : (blanks === 1 ? 10 : 12);
+            const lines = boardLines().sort((a, b) => b.length - a.length).slice(0, 15);
+            for (const L of lines) {
+                if (rack.length + L.length > maxTiles) continue;
+                try {
+                    (await unscrambleReq(rackStr + L, 150)).forEach(w => { if (w.includes(L)) set.add(w); });
+                } catch (e) { /* rack+line over the API limit */ }
+            }
+            const arr = [...set];
+            candCache.set(sig, arr);
+            return arr;
+        }
+
+        function generatePlacements(words) {
+            const out = [];
+            const seen = new Set();
+            for (const word of words) {
+                for (const dir of [[0, 1], [1, 0]]) {
+                    const [dr, dc] = dir;
+                    for (let r = 0; r < SIZE; r++) {
+                        for (let c = 0; c < SIZE; c++) {
+                            const endR = r + dr * (word.length - 1), endC = c + dc * (word.length - 1);
+                            if (!inBounds(endR, endC)) continue;
+                            const cells = [];
+                            let ok = true, newCount = 0;
+                            for (let k = 0; k < word.length; k++) {
+                                const rr = r + dr * k, cc = c + dc * k;
+                                const t = board[rr][cc];
+                                if (t) {
+                                    if (t.letter !== word[k]) { ok = false; break; }
+                                    cells.push({ r: rr, c: cc, letter: word[k], isNew: false });
+                                } else {
+                                    cells.push({ r: rr, c: cc, letter: word[k], isNew: true });
+                                    newCount++;
+                                }
+                            }
+                            if (!ok || newCount === 0 || newCount > rack.length) continue;
+
+                            if (finalized === 0) {
+                                if (!cells.some(x => x.isNew && x.r === CENTER && x.c === CENTER)) continue;
+                            } else if (!cells.some(x => !x.isNew || hasBoardNeighbor(x.r, x.c))) {
+                                continue;
+                            }
+
+                            const key = word + '|' + r + '|' + c + '|' + dr;
+                            if (seen.has(key)) continue;
+                            seen.add(key);
+
+                            const plan = planBlanks(cells.filter(x => x.isNew).map(x => x.letter));
+                            if (!plan) continue;
+                            const overlay = new Map();
+                            let pi = 0;
+                            for (const x of cells) {
+                                if (x.isNew) { x.blank = plan[pi++]; overlay.set(x.r + ',' + x.c, { letter: x.letter, blank: x.blank }); }
+                            }
+
+                            const mainCells = cells.map(x => ({ r: x.r, c: x.c }));
+                            const crossWords = [];
+                            const seenW = new Set();
+                            for (const x of cells) {
+                                if (!x.isNew) continue;
+                                const cw = wordThrough(x.r, x.c, [dir[1], dir[0]], overlay);
+                                if (cw.length >= 2) {
+                                    const cwk = cw.map(y => y.r + ',' + y.c).join(';');
+                                    if (!seenW.has(cwk)) { seenW.add(cwk); crossWords.push(cw); }
+                                }
+                            }
+                            out.push({
+                                word, dir, r, c, cells, mainCells, crossWords, overlay,
+                                newKeys: cells.filter(x => x.isNew).length, score: 0
+                            });
+                        }
+                    }
+                }
+            }
+            return out;
+        }
+
+        async function generateMoves() {
+            const words = await getCandidateWords();
+            const placements = generatePlacements(words);
+            if (!placements.length) return [];
+
+            for (const p of placements) p.pre = scoreCells(p.mainCells, p.overlay);
+            placements.sort((a, b) => b.pre - a.pre);
+            const shortlist = placements.slice(0, 80);
+
+            const crossSet = new Set();
+            for (const p of shortlist) for (const cw of p.crossWords) crossSet.add(lettersOf(cw, p.overlay));
+            const valid = crossSet.size ? await validateWords([...crossSet]) : {};
+
+            const scored = [];
+            for (const p of shortlist) {
+                if (p.crossWords.some(cw => !valid[lettersOf(cw, p.overlay)])) continue;
+                let total = p.pre;
+                for (const cw of p.crossWords) total += scoreCells(cw, p.overlay);
+                if (p.newKeys === 7) total += 50;
+                p.score = total;
+                scored.push(p);
+            }
+            scored.sort((a, b) => b.score - a.score);
+            return scored;
+        }
+
         async function suggest() {
             if (!rack.length) return showMessage('info', 'Your rack is empty.');
-            const letters = rack.map(t => t.blank ? '_' : t.letter).join('');
-            $('suggestions').innerHTML = '<span class="text-slate-400">Loading...</span>';
+            $('suggestions').innerHTML = '<span class="text-slate-400">Searching the board...</span>';
             try {
-                const res = await fetch(`${API}/unscramble/${encodeURIComponent(letters)}?sort=score&limit=8&minLength=2`);
-                const data = await res.json();
-                if (!data.words || !data.words.length) {
-                    $('suggestions').innerHTML = '<span class="text-slate-400">No words from this rack.</span>';
+                recallAll();
+                render();
+                const moves = await generateMoves();
+                currentMoves = moves;
+                if (!moves.length) {
+                    $('suggestions').innerHTML = '<span class="text-slate-400">No playable moves found.</span>';
                     return;
                 }
-                $('suggestions').innerHTML = '<div class="flex flex-wrap gap-1.5">' + data.words.map(w =>
-                    `<span class="px-2 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-semibold">${w.word.toUpperCase()} <span class="text-emerald-600">${w.score}</span></span>`
-                ).join('') + '</div>';
+                const top = moves.slice(0, 12);
+                $('suggestions').innerHTML = '<div class="space-y-1.5 text-left">' + top.map((m, i) => {
+                    const across = m.dir[0] === 0;
+                    const pos = String.fromCharCode(65 + m.c) + (m.r + 1);
+                    const formed = [...new Set([m.word, ...m.crossWords.map(cw => lettersOf(cw, m.overlay))])];
+                    return `<button class="play-move w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 transition-colors" data-move="${i}" title="${formed.join(', ').toUpperCase()}">
+                        <span class="flex items-center gap-2 min-w-0">
+                            <span class="font-bold text-slate-800 truncate">${m.word.toUpperCase()}</span>
+                            <span class="text-[10px] text-slate-400 whitespace-nowrap">${pos} ${across ? 'across' : 'down'}</span>
+                        </span>
+                        <span class="font-bold text-emerald-600 text-sm">${m.score}</span>
+                    </button>`;
+                }).join('') + '</div>';
+                $('suggestions').querySelectorAll('.play-move').forEach(btn => {
+                    btn.addEventListener('click', () => applyMove(top[parseInt(btn.dataset.move, 10)]));
+                });
             } catch (err) {
-                $('suggestions').innerHTML = '<span class="text-red-500">Could not load suggestions.</span>';
+                $('suggestions').innerHTML = `<span class="text-red-500">Could not load moves: ${err.message}</span>`;
             }
+        }
+
+        function applyMove(move) {
+            recallAll();
+            for (const x of move.cells) {
+                if (!x.isNew) continue;
+                let idx = rack.findIndex(t => !t.blank && t.letter === x.letter);
+                let blank = false;
+                if (idx < 0) { idx = rack.findIndex(t => t.blank); blank = true; }
+                if (idx < 0) { render(); return showMessage('error', 'Rack changed — run Suggest again.'); }
+                rack.splice(idx, 1);
+                board[x.r][x.c] = { letter: x.letter, blank, pending: true };
+            }
+            selected = null;
+            render();
+            showMessage('info', 'Move loaded — press Submit play to confirm.');
         }
 
         // ---- messages ----
